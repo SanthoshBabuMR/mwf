@@ -51,7 +51,7 @@ from pyspark.sql.types import IntegerType
 extract_char = r'^([A-Z])*'
 extract_num = '^([A-Z])*(\d*)'
 
-df = df.withColumn("prefix", regexp_extract(df["fromCode"], extract_start_chars, 1))
+df = df.withColumn("prefix", regexp_extract(df["fromCode"], extract_char, 1))
 df = df.withColumn("from", regexp_extract(df["fromCode"], extract_num, 2).cast(IntegerType()))
 df = df.withColumn("thru", regexp_extract(df["thruCode"], extract_num, 2).cast(IntegerType()))
 df = df.drop('fromCode').drop('thruCode')
