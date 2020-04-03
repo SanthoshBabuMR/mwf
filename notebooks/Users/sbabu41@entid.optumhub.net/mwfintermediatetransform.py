@@ -9,12 +9,18 @@
 
 # COMMAND ----------
 
+# Configure
 storage_account_name = "mwfstore"
-src_container_name = "input"
 storage_account_access_key = "v0vKZp609wkkroud8z7wAF0v/dT81p0OfFcA5EPQBW9IkOuDPlZqJUJesYFoeDDQ0d6gocokTQl9ONaw8Y0JqA=="
+
+src_container_name = "input"
+intermittentoutput_container_name = "intermittentoutput"
 
 file_location = "wasbs://"+src_container_name+"@"+storage_account_name+".blob.core.windows.net/"
 file_type = "csv"
+
+intermittentoutput_folder = "wasbs://"+intermittentoutput_container_name+"@"+storage_account_name+".blob.core.windows.net/"
+output_blob_folder = "%s/temp" % intermittentoutput_folder
 
 spark.conf.set("fs.azure.account.key."+storage_account_name+".blob.core.windows.net", storage_account_access_key)
 
@@ -59,7 +65,8 @@ from pyspark.sql.types import StructField
 from pyspark.sql.types import StringType
 schema = StructType([
     StructField("Code",StringType(),False),
-    StructField("Modifier",StringType(),True),
+    StructField("Modifier",StringType(),False),
+    StructField("Amount",StringType(),True)
 ])
 
 input_list = df.collect()
@@ -69,18 +76,14 @@ for row in input_list:
   limit = row['thru'] - row['from']
   next_val = row['from'];
   
-  output_list.append((row['prefix'] + str(next_val), row['modifierUA']))
-  output_list.append((row['prefix'] + str(next_val), row['modifierUB']))
-  # modifiers = modifiers.union(sqlContext.createDataFrame([(row['prefix'] + str(next_val), row['UA'])], schema))
-  # modifiers = modifiers.union(sqlContext.createDataFrame([(row['prefix'] + str(next_val), row['UB'])], schema))
+  output_list.append((row['prefix'] + str(next_val), "UA", row['modifierUA']))
+  output_list.append((row['prefix'] + str(next_val), "UB", row['modifierUB']))
   while limit > 0:
     limit = limit - 1
     next_val = next_val + 1
-    output_list.append((row['prefix'] + str(next_val), row['modifierUA']))
-    output_list.append((row['prefix'] + str(next_val), row['modifierUB']))
-    # modifiers = modifiers.union(sqlContext.createDataFrame([(row['prefix'] + str(next_val), row['UA'])], schema))
-    # modifiers = modifiers.union(sqlContext.createDataFrame([(row['prefix'] + str(next_val), row['UB'])], schema))
-
+    output_list.append((row['prefix'] + str(next_val), "UA", row['modifierUA']))
+    output_list.append((row['prefix'] + str(next_val), "UB", row['modifierUB']))
+  
 output_rdd = sc.parallelize(output_list)
 output_df = sqlContext.createDataFrame(output_rdd, schema)
 # output_df.printSchema()
@@ -93,11 +96,6 @@ output_df.show(10)
 # COMMAND ----------
 
 
-intermittentoutput_container_name = "intermittentoutput"
-storage_account_access_key = "v0vKZp609wkkroud8z7wAF0v/dT81p0OfFcA5EPQBW9IkOuDPlZqJUJesYFoeDDQ0d6gocokTQl9ONaw8Y0JqA=="
-intermittentoutput_file_location = "wasbs://"+intermittentoutput_container_name+"@"+storage_account_name+".blob.core.windows.net/"
-
-output_blob_folder = "%s/temp" % intermittentoutput_file_location
 
 # write the dataframe as a single file to blob storage
 (output_df
@@ -114,13 +112,13 @@ output_file = [x for x in files if x.name.startswith("part-")]
 
 # Move the wrangled-data CSV file from a sub-folder (wrangled_data_folder) to the root of the blob container
 # While simultaneously changing the file name
-dbutils.fs.mv(output_file[0].path, "%s/30181_modifier_uaub (transformed).csv" % intermittentoutput_file_location)
+dbutils.fs.mv(output_file[0].path, "%s/30181_modifier_uaub (transformed).csv" % intermittentoutput_folder)
 
 ## Clean up temp files
 files = dbutils.fs.ls(output_blob_folder)
 for file in files:
   dbutils.fs.rm(file.path)
-dbutils.fs.rm("%s/temp" % intermittentoutput_file_location)  
+dbutils.fs.rm("%s/temp" % intermittentoutput_folder)  
 
 # COMMAND ----------
 
