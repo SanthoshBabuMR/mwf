@@ -76,13 +76,13 @@ for row in input_list:
   limit = row['thru'] - row['from']
   next_val = row['from'];
   
-  output_list.append((row['prefix'] + str(next_val), "UA", row['modifierUA']))
-  output_list.append((row['prefix'] + str(next_val), "UB", row['modifierUB']))
+  output_list.append((row['prefix'] + str(next_val), "UA-", row['modifierUA']))
+  output_list.append((row['prefix'] + str(next_val), "UB-", row['modifierUB']))
   while limit > 0:
     limit = limit - 1
     next_val = next_val + 1
-    output_list.append((row['prefix'] + str(next_val), "UA", row['modifierUA']))
-    output_list.append((row['prefix'] + str(next_val), "UB", row['modifierUB']))
+    output_list.append((row['prefix'] + str(next_val), "UA-", row['modifierUA']))
+    output_list.append((row['prefix'] + str(next_val), "UB-", row['modifierUB']))
   
 output_rdd = sc.parallelize(output_list)
 output_df = sqlContext.createDataFrame(output_rdd, schema)
