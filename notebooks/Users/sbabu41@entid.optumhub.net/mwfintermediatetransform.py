@@ -1,9 +1,9 @@
 # Databricks notebook source
 storage_account_name = "mwfstore"
-storage_container_name = "transformintermediate"
+src_container_name = "input"
 storage_account_access_key = "v0vKZp609wkkroud8z7wAF0v/dT81p0OfFcA5EPQBW9IkOuDPlZqJUJesYFoeDDQ0d6gocokTQl9ONaw8Y0JqA=="
 
-file_location = "wasbs://"+storage_container_name+"@"+storage_account_name+".blob.core.windows.net/"
+file_location = "wasbs://"+src_container_name+"@"+storage_account_name+".blob.core.windows.net/"
 file_type = "csv"
 
 spark.conf.set("fs.azure.account.key."+storage_account_name+".blob.core.windows.net", storage_account_access_key)
@@ -20,7 +20,8 @@ schema = StructType([
     StructField("modifierUA",StringType(),True),
     StructField("modifierUB",StringType(),True)
 ])
-df = spark.read.format(file_type).option("inferSchema", "false").schema(schema).load(file_location)
+modifiers_file_location = "%s/modifiers" % file_location
+df = spark.read.format(file_type).option("inferSchema", "false").schema(schema).load(modifiers_file_location)
 df.show(6)
 
 df = df.filter("thruCode != 'null' and thruCode != 'Thru'")
@@ -78,3 +79,39 @@ print(output_df.count())
 output_df.show(10)
 
   
+
+# COMMAND ----------
+
+
+intermittentoutput_container_name = "intermittentoutput"
+storage_account_access_key = "v0vKZp609wkkroud8z7wAF0v/dT81p0OfFcA5EPQBW9IkOuDPlZqJUJesYFoeDDQ0d6gocokTQl9ONaw8Y0JqA=="
+intermittentoutput_file_location = "wasbs://"+intermittentoutput_container_name+"@"+storage_account_name+".blob.core.windows.net/"
+
+output_blob_folder = "%s/temp" % intermittentoutput_file_location
+
+# write the dataframe as a single file to blob storage
+(output_df
+ .coalesce(1)
+ .write
+ .mode("overwrite")
+ .option("header", "true")
+ .format("com.databricks.spark.csv")
+ .save(output_blob_folder))
+
+# Get the name of the wrangled-data CSV file that was just saved to Azure blob storage (it starts with 'part-')
+files = dbutils.fs.ls(output_blob_folder)
+output_file = [x for x in files if x.name.startswith("part-")]
+
+# Move the wrangled-data CSV file from a sub-folder (wrangled_data_folder) to the root of the blob container
+# While simultaneously changing the file name
+dbutils.fs.mv(output_file[0].path, "%s/30181_modifier_uaub (transformed).csv" % intermittentoutput_file_location)
+
+## Clean up temp files
+files = dbutils.fs.ls(output_blob_folder)
+for file in files:
+  dbutils.fs.rm(file.path)
+dbutils.fs.rm("%s/temp" % intermittentoutput_file_location)  
+
+# COMMAND ----------
+
+# Run All Above
