@@ -1,4 +1,14 @@
 # Databricks notebook source
+# Blob Storage Strucutre
+# mwfstore                                                        (storage account)
+#   input                                                           (storage container)
+#     rates_input.csv                                                 (input file)
+#     modifiers/30181_modifier_uaub (unmodified).csv                  (input file)
+#   output                                                          (storage container )
+#   intermittentoutput                                              (storage container)
+
+# COMMAND ----------
+
 storage_account_name = "mwfstore"
 src_container_name = "input"
 storage_account_access_key = "v0vKZp609wkkroud8z7wAF0v/dT81p0OfFcA5EPQBW9IkOuDPlZqJUJesYFoeDDQ0d6gocokTQl9ONaw8Y0JqA=="
